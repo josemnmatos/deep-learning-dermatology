@@ -23,3 +23,9 @@ class MLP(nn.Module):
         for layer, activation in zip(self.layers, self.activations):
             x = activation(layer(x))
         return x
+
+    # https://discuss.pytorch.org/t/reset-model-weights/19180/4
+    def reset_parameters(self):
+        for layer in self.children():
+            if hasattr(layer, "reset_parameters"):
+                layer.reset_parameters()
