@@ -3,11 +3,25 @@ from helper_methods import get_data_loaders
 from pipeline import CustomModelPipeline
 from torch import optim
 import torch.nn as nn
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# set seaborn style
+sns.set_theme(
+    context="notebook", style="whitegrid", palette="bright", color_codes=True, rc=None
+)
 
 # Experiment Parameters
-N_REPEATS = 10
-N_EPOCHS = 10
-LR = 0.005
+N_REPEATS = 3
+N_EPOCHS = 15
+LR = 0.001
+
+# 1. Hidden Layer Sizes Experiment 1
+HIDDEN_LAYERS_1 = (256, 64)
+HIDDEN_LAYERS_2 = (512, 128)
+HIDDEN_LAYERS_3 = (1024, 256)
+HIDDEN_LAYERS_4 = (2048, 512)
 
 
 def init_pipeline(
@@ -19,12 +33,9 @@ def init_pipeline(
     num_classes,
 ):
     """Initialize pipeline with MLP model"""
-    N_LAYERS = 3
-    HIDDEN_LAYERS = ((input_size + num_classes) // 2,) * N_LAYERS
-
     # Initialize MLP with proper parameters
     model = MLP(
-        input_size=input_size, hidden_sizes=HIDDEN_LAYERS, num_classes=num_classes
+        input_size=input_size, hidden_sizes=HIDDEN_LAYERS_1, num_classes=num_classes
     )
 
     pipeline = CustomModelPipeline(
@@ -38,6 +49,44 @@ def init_pipeline(
         test_data=test_loader,
     )
     return pipeline
+
+
+def plot_avg_losses(t_losses, v_losses):
+    # Convert to numpy arrays for easier manipulation
+    t_losses = np.array(t_losses)
+    v_losses = np.array(v_losses)
+
+    # Calculate mean and std for training and validation losses
+    mean_t_losses = np.mean(t_losses, axis=0)
+    mean_v_losses = np.mean(v_losses, axis=0)
+    std_t_losses = np.std(t_losses, axis=0)
+    std_v_losses = np.std(v_losses, axis=0)
+
+    epochs = np.arange(1, N_EPOCHS + 1)
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(epochs, mean_t_losses, label="Train Loss", color="blue")
+    plt.plot(epochs, mean_v_losses, label="Validation Loss", color="orange")
+    plt.fill_between(
+        epochs,
+        mean_t_losses - std_t_losses,
+        mean_t_losses + std_t_losses,
+        color="blue",
+        alpha=0.2,
+    )
+    plt.fill_between(
+        epochs,
+        mean_v_losses - std_v_losses,
+        mean_v_losses + std_v_losses,
+        color="orange",
+        alpha=0.2,
+    )
+    plt.title("Training and Validation Losses")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 
 def main():
@@ -88,6 +137,10 @@ def main():
         accuracies.append(scores["accuracy"])
         f1_scores.append(scores["f1"])
 
+        losses = pipeline.get_losses()
+        t_losses.append(losses["train"])
+        v_losses.append(losses["val"])
+
     # Calculate average and std of accuracies and f1 scores
     avg_accuracy = sum(accuracies) / len(accuracies)
     avg_f1 = sum(f1_scores) / len(f1_scores)
@@ -98,6 +151,8 @@ def main():
 
     print(f"Average accuracy: {avg_accuracy:.4f} ± {std_accuracy:.4f}")
     print(f"Average F1 score: {avg_f1:.4f} ± {std_f1:.4f}")
+
+    plot_avg_losses(t_losses, v_losses)
 
 
 if __name__ == "__main__":
