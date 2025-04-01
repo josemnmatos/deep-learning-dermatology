@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 import copy
 import numpy as np
 import time
-from custom_models.mlp import MLP 
+from custom_models.mlp import MLP
+from torchvision import transforms
 
 
 class CustomModelPipeline:
@@ -25,6 +26,7 @@ class CustomModelPipeline:
         patience: int = 10,  # Adjusted default patience
         min_delta: float = 0.001,
         device: str = None,  # Optional device override
+        data_augmentation: bool = False,
     ):
         self.model_instance = model  # Store the initial model state if needed
         self.criterion = criterion
@@ -36,6 +38,7 @@ class CustomModelPipeline:
         self.test_data = test_data
         self.patience = patience
         self.min_delta = min_delta
+        self.data_augmentation = data_augmentation
 
         # Determine device
         if device:
@@ -67,6 +70,24 @@ class CustomModelPipeline:
         self.__test_accuracy = None
         self.__test_f1 = None
         self.__run_duration = None
+
+    def __augment_data(self, X_batch):
+        # Use transforms that work directly on tensors
+        transform = transforms.Compose(
+            [
+                transforms.RandomHorizontalFlip(p=0.3),
+                transforms.RandomRotation(degrees=15),
+                transforms.ColorJitter(
+                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
+                ),
+            ]
+        )
+
+        # Apply transformations to each image in the batch
+        augmented_batch = torch.stack(
+            [transform(img.unsqueeze(0)).squeeze(0) for img in X_batch]
+        )
+        return augmented_batch
 
     def _train_model(self):
         """
@@ -172,6 +193,10 @@ class CustomModelPipeline:
         self.model.train()
         for X_batch, y_batch in dataloader:
             X_batch, y_batch = X_batch.to(self.device), y_batch.to(self.device)
+
+            if self.data_augmentation:
+                X_batch = self.__augment_data(X_batch)
+
             if isinstance(self.model, MLP):  # Use actual MLP class name if different
                 X_batch = X_batch.flatten(start_dim=1)
             X_batch = X_batch / 255.0  # Normalize
