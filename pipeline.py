@@ -1,6 +1,11 @@
-# pipeline_unified.py (Save this as a new file or overwrite the old one)
-
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    auc,
+    roc_auc_score,
+    roc_curve,
+    confusion_matrix,
+)
 import torch
 from torch.utils.data import DataLoader
 from torch import nn
@@ -10,6 +15,7 @@ import numpy as np
 import time
 from custom_models.mlp import MLP
 from torchvision import transforms
+from sklearn.preprocessing import label_binarize
 
 
 class CustomModelPipeline:
@@ -17,18 +23,17 @@ class CustomModelPipeline:
         self,
         model: nn.Module,
         criterion: nn.Module,
-        optimizer_class: torch.optim.Optimizer,  # Pass the class (e.g., optim.Adam)
-        optimizer_params: dict,  # Pass params like {'lr': 0.001, 'weight_decay': 0}
+        optimizer_class: torch.optim.Optimizer,
+        optimizer_params: dict,  # e.g. {'lr': 0.001, 'weight_decay': 0}
         n_epochs: int,
         training_data: DataLoader,
         validation_data: DataLoader,
         test_data: DataLoader,
-        patience: int = 10,  # Adjusted default patience
+        patience: int = 10,
         min_delta: float = 0.001,
-        device: str = None,  # Optional device override
-        data_augmentation: bool = False,
+        device: str = "cpu",
     ):
-        self.model_instance = model  # Store the initial model state if needed
+        self.model_instance = model
         self.criterion = criterion
         self.optimizer_class = optimizer_class
         self.optimizer_params = optimizer_params
@@ -38,17 +43,13 @@ class CustomModelPipeline:
         self.test_data = test_data
         self.patience = patience
         self.min_delta = min_delta
-        self.data_augmentation = data_augmentation
+        self.num_classes = 7  #  7 classes for this classification task
 
-        # Determine device
         if device:
             self.device = torch.device(device)
         else:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
-
-        # Internal state variables reset before each run
-        self._reset_state()
 
     def _reset_state(self):
         """Resets internal state variables before a new execution run."""
@@ -56,7 +57,7 @@ class CustomModelPipeline:
         self.model = copy.deepcopy(self.model_instance)
         self.model.to(self.device)
 
-        # Instantiate the optimizer for the current model instance
+        # Instantiate  optimizer for the current model 
         self.optimizer = self.optimizer_class(
             self.model.parameters(), **self.optimizer_params
         )
@@ -71,25 +72,7 @@ class CustomModelPipeline:
         self.__test_f1 = None
         self.__run_duration = None
 
-    def __augment_data(self, X_batch):
-        # Use transforms that work directly on tensors
-        transform = transforms.Compose(
-            [
-                transforms.RandomHorizontalFlip(p=0.3),
-                transforms.RandomRotation(degrees=15),
-                transforms.ColorJitter(
-                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
-                ),
-            ]
-        )
-
-        # Apply transformations to each image in the batch
-        augmented_batch = torch.stack(
-            [transform(img.unsqueeze(0)).squeeze(0) for img in X_batch]
-        )
-        return augmented_batch
-
-    def _train_model(self):
+    def __train_model(self):
         """
         Internal method to handle the actual training loop, validation for
         early stopping, and saving the best model state.
@@ -147,7 +130,7 @@ class CustomModelPipeline:
         Trains the model and evaluates performance on the VALIDATION set.
         Use this method for hyperparameter tuning.
         """
-        self._train_model()  # Run the core training logic
+        self.__train_model()  # Run the core training logic
 
         # Evaluate the best model state on the VALIDATION set
         print("Evaluating best model on VALIDATION set...")
@@ -166,22 +149,62 @@ class CustomModelPipeline:
     def execute_and_test(self):
         """
         Trains the model and evaluates performance on the TEST set.
-        Use this method ONLY for the final evaluation of the chosen model.
+        For final evaluation on the TEST set.
         """
-        self._train_model()  # Run the core training logic
+        self.__train_model()  # Run the core training logic
 
         # Evaluate the best model state on the TEST set
         print("Evaluating final model on TEST set...")
         self.model.eval()
-        test_preds, test_labels, _ = self.__run_inference_loop(self.test_data)
+        test_preds, test_labels, outputs = self.__run_inference_loop(self.test_data)
 
+        test_labels = np.array(test_labels)
+        test_preds = np.array(test_preds)
+        outputs = np.array(outputs)
+
+        # calculate OvR AUC
+        # Assuming test_labels are binary (0 or 1) and test_preds are probabilities
+        test_labels_bin = label_binarize(test_labels, classes=range(self.num_classes))
+
+        print(f"Test Labels Shape: {test_labels_bin.shape}")
+        print(f"Test Predictions Shape: {test_preds.shape}")
+        print(f"Test Labels: {test_preds}")
+
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+
+        for i in range(self.num_classes):
+            fpr[i], tpr[i], _ = roc_curve(test_labels_bin[:, i], outputs[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+            print(f"Class {i} AUC: {roc_auc[i]:.4f}")
+
+        # micro-average ROC AUC
+        fpr["micro"], tpr["micro"], _ = roc_curve(
+            test_labels_bin.ravel(), outputs.ravel()
+        )
+        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+        # macro-average ROC AUC
+        roc_auc["macro"] = roc_auc_score(test_labels_bin, outputs, average="macro")
+
+        # calculate Conf.Matrix for test set
+        self.__test_confusion_matrix = confusion_matrix(test_labels, test_preds)
         self.__test_accuracy = accuracy_score(test_labels, test_preds)
         self.__test_f1 = f1_score(test_labels, test_preds, average="macro")
+        self.__test_fpr = fpr
+        self.__test_tpr = tpr
+        self.__test_roc_auc = roc_auc
 
         print("-" * 30)
         print(f"FINAL TEST SET PERFORMANCE:")
         print(f"Test Accuracy: {self.__test_accuracy:.4f}")
         print(f"Test Macro F1 Score: {self.__test_f1:.4f}")
+        print(f"Test Confusion Matrix:\n{self.__test_confusion_matrix}")
+        print(f"Test ROC AUC (macro): {roc_auc['macro']:.4f}")
+        print(f"Test ROC AUC (micro): {roc_auc['micro']:.4f}")
+        print(f"Test ROC AUC (per class): {roc_auc}")
+
         print("-" * 30)
 
         # Return test scores
@@ -193,9 +216,6 @@ class CustomModelPipeline:
         self.model.train()
         for X_batch, y_batch in dataloader:
             X_batch, y_batch = X_batch.to(self.device), y_batch.to(self.device)
-
-            if self.data_augmentation:
-                X_batch = self.__augment_data(X_batch)
 
             if isinstance(self.model, MLP):  # Use actual MLP class name if different
                 X_batch = X_batch.flatten(start_dim=1)
@@ -254,7 +274,7 @@ class CustomModelPipeline:
                 all_outputs.extend(outputs.cpu().numpy())
         return all_preds, all_labels, all_outputs
 
-    # --- Getter Methods ---
+
     def get_validation_scores(self):
         """Returns the accuracy and F1 score calculated on the validation set."""
         # assert self._model_is_trained, "Model must be trained first."
@@ -267,7 +287,14 @@ class CustomModelPipeline:
         # assert self._model_is_trained, "Model must be trained first."
         if self.__test_accuracy is None:
             return {"accuracy": None, "f1": None}
-        return {"accuracy": self.__test_accuracy, "f1": self.__test_f1}
+        return {
+            "accuracy": self.__test_accuracy,
+            "f1": self.__test_f1,
+            "confusion_matrix": self.__test_confusion_matrix,
+            "roc_auc": self.__test_roc_auc,
+            "fpr": self.__test_fpr,
+            "tpr": self.__test_tpr,
+        }
 
     def get_losses(self):
         """Returns the training and validation losses per epoch."""
@@ -276,15 +303,3 @@ class CustomModelPipeline:
     def get_run_duration(self):
         """Returns the duration of the last training run in seconds."""
         return self.__run_duration
-
-    def plot_losses(self, title_suffix=""):
-        """Plots training and validation losses."""
-        plt.figure(figsize=(10, 5))
-        plt.plot(self.__training_losses, label="Training loss", color="blue")
-        plt.plot(self.__validation_losses, label="Validation loss", color="orange")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.title(f"Training and Validation Losses {title_suffix}")
-        plt.legend()
-        plt.grid(True)
-        plt.show()
