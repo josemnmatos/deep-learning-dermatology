@@ -32,22 +32,29 @@ The models were optimized through rigorous hyperparameter tuning, focusing on th
 ### Dataset Samples
 A glimpse into the 7 classes of skin lesions present in the DermaMNIST dataset (28x28 resolution):
 
-![DermaMNIST Sample Images](figures/dermamnist_samples.png)
+![DermaMNIST Sample Images](figures/class_samples.png)
 *Fig 1: Samples from each class of the DermaMNIST dataset (Source: Project Report)*
 
 ### Model Performance
-
-**Average Loss Curves (CNN Example):** Demonstrates training stability and prevention of overfitting using data augmentation and early stopping.
-![Average Loss Curves](figures/cnn_avg_loss_curves.png) <!-- Make sure you save this plot -->
+&nbsp;
+**Average Loss Curves (CNN Example):** Demonstrates training stability and prevention of overfitting using data augmentation and early stopping.  
+&nbsp;
+![Average Loss Curves](figures/image.png) <!-- Make sure you save this plot -->    
 *Fig 2: Average Train and Validation Loss for the optimized CNN over 5 runs.*
-
-**Final ROC Curves (Mean AUC over 5 runs):** Shows the discriminative ability of the optimized models on the test set. ViT achieves the highest overall AUC, but CNN shows strong performance across classes relevant for MAF1/ACC.
-![Final ROC Curves](figures/final_roc_curves.png) <!-- Make sure you save this plot from final_model_eval -->
+&nbsp;
+&nbsp;
+**Final ROC Curves (Mean AUC over 5 runs):** Shows the discriminative ability of the optimized models on the test set. ViT achieves the highest overall AUC, but CNN shows strong performance across classes relevant for MAF1/ACC.   
+&nbsp;
+![Final ROC Curves](figures/roc_auc_plots.png) <!-- Make sure you save this plot from final_model_eval -->    
 *Fig 3: Mean ROC curves for MLP, CNN, and ViT evaluated on the test set.*
-
-**Average Confusion Matrix (Optimized CNN):** Provides insight into class-specific performance and common misclassifications for the best-performing model (CNN).
-![Average Confusion Matrix](figures/cnn_avg_confusion_matrix.png) <!-- Make sure you save this plot -->
-*Fig 4: Average Confusion Matrix for the optimized CNN over 5 runs on the test set.*
+&nbsp;
+&nbsp;
+**Average Confusion Matrix (Optimized CNN):** Provides insight into class-specific performance and common misclassifications for the best-performing model (CNN).    
+&nbsp;
+![Average Confusion Matrix](figures/cfms.png) <!-- Make sure you save this plot -->
+*Fig 4: Average Confusion Matrix for the optimized CNN over 5 runs on the test set.*     
+&nbsp;
+&nbsp;
 
 ## Dataset: DermaMNIST
 
