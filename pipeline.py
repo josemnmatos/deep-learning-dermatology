@@ -77,7 +77,7 @@ class CustomModelPipeline:
         Internal method to handle the actual training loop, validation for
         early stopping, and saving the best model state.
         """
-        self._reset_state()  # Ensure state is fresh before training starts
+        self._reset_state()  # new state before training
         start_time = time.time()
 
         best_val_loss = float("inf")
@@ -143,7 +143,6 @@ class CustomModelPipeline:
         print(f"Validation Accuracy: {self.__validation_accuracy:.4f}")
         print(f"Validation Macro F1 Score: {self.__validation_f1:.4f}")
 
-        # Return validation scores (useful for hyperparameter loops)
         return self.get_validation_scores()
 
     def execute_and_test(self):
@@ -151,7 +150,7 @@ class CustomModelPipeline:
         Trains the model and evaluates performance on the TEST set.
         For final evaluation on the TEST set.
         """
-        self.__train_model()  # Run the core training logic
+        self.__train_model() 
 
         # Evaluate the best model state on the TEST set
         print("Evaluating final model on TEST set...")
@@ -163,7 +162,7 @@ class CustomModelPipeline:
         outputs = np.array(outputs)
 
         # calculate OvR AUC
-        # Assuming test_labels are binary (0 or 1) and test_preds are probabilities
+        # test_labels are binary (0 or 1) and test_preds are probabilities
         test_labels_bin = label_binarize(test_labels, classes=range(self.num_classes))
 
         print(f"Test Labels Shape: {test_labels_bin.shape}")
@@ -217,9 +216,9 @@ class CustomModelPipeline:
         for X_batch, y_batch in dataloader:
             X_batch, y_batch = X_batch.to(self.device), y_batch.to(self.device)
 
-            if isinstance(self.model, MLP):  # Use actual MLP class name if different
+            if isinstance(self.model, MLP):  
                 X_batch = X_batch.flatten(start_dim=1)
-            X_batch = X_batch / 255.0  # Normalize
+            X_batch = X_batch / 255.0  
             y_batch = y_batch.squeeze().long()
 
             outputs = self.model(X_batch)
@@ -240,7 +239,7 @@ class CustomModelPipeline:
                 X_batch, y_batch = X_batch.to(self.device), y_batch.to(self.device)
                 if isinstance(
                     self.model, MLP
-                ):  # Use actual MLP class name if different
+                ):  
                     X_batch = X_batch.flatten(start_dim=1)
                 X_batch = X_batch / 255.0  # Normalize
                 y_batch = y_batch.squeeze().long()
@@ -261,7 +260,7 @@ class CustomModelPipeline:
                 X_batch, y_batch = X_batch.to(self.device), y_batch.to(self.device)
                 if isinstance(
                     self.model, MLP
-                ):  # Use actual MLP class name if different
+                ):  
                     X_batch = X_batch.flatten(start_dim=1)
                 X_batch = X_batch / 255.0  # Normalize
                 y_true = y_batch.squeeze().long()
@@ -277,14 +276,12 @@ class CustomModelPipeline:
 
     def get_validation_scores(self):
         """Returns the accuracy and F1 score calculated on the validation set."""
-        # assert self._model_is_trained, "Model must be trained first."
         if self.__validation_accuracy is None:
             return {"accuracy": None, "f1": None}
         return {"accuracy": self.__validation_accuracy, "f1": self.__validation_f1}
 
     def get_test_scores(self):
         """Returns the accuracy and F1 score calculated on the test set."""
-        # assert self._model_is_trained, "Model must be trained first."
         if self.__test_accuracy is None:
             return {"accuracy": None, "f1": None}
         return {
