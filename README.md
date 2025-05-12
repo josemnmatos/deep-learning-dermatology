@@ -2,7 +2,6 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-PyTorch-orange.svg)](https://pytorch.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dataset](https://img.shields.io/badge/Dataset-DermaMNIST-green.svg)](https://medmnist.com/)
 
 **Author:** José Matos ([Github](https://github.com/josemnmatos)) ([LinkedIn](https://linkedin.com/in/josemnmatos))
@@ -10,6 +9,8 @@
 ## Project Overview
 
 This project implements and compares three deep learning architectures for automated classification of skin lesions from dermatoscopic images. It addresses a critical medical image analysis challenge: accurately identifying 7 types of skin lesions from the DermaMNIST dataset to assist in clinical diagnosis.
+
+**For complete implementation details, hyperparameter tuning processes, and extended analysis, please refer to the [comprehensive project report](https://github.com/josemnmatos/ml-dermatology-project/blob/main/report.pdf).**
 
 ### Motivation and Application
 
@@ -198,16 +199,14 @@ The modular design of the CustomModelPipeline allows for easy extension to:
 - Various optimization strategies
 - Custom evaluation metrics
 
-## Future Research Directions
+## Possible Directions
 
 Based on the findings of this project, several promising technical extensions are identified:
 
 1. **Resolution Enhancement**: Implement super-resolution techniques to improve diagnostic quality of low-resolution images
 2. **Transfer Learning**: Leverage pre-trained models on larger dermatology datasets to improve feature extraction
 3. **Ensemble Methods**: Combine predictions from multiple architectural paradigms to boost overall performance
-4. **Explainability**: Implement visualization of attention maps (for ViT) and feature importance to improve clinical interpretability
-5. **Clinical Validation**: Partner with dermatologists for expert validation of model predictions in realistic settings
-
+   
 ## Key Project Contributions
 
 1. Creation of a unified experimentation framework for fair comparison of neural architectures
